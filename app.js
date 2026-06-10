@@ -4,7 +4,7 @@
 const API = "https://api.tfl.gov.uk";
 const MODES = "bus,tube,dlr,overground,elizabeth-line,tram";
 const STOP_TYPES =
-  "NaptanPublicBusCoachStreetInteractionPoint,NaptanMetroStation,NaptanRailStation,NaptanOnstreetBusCoachStopPair";
+  "NaptanPublicBusCoachTram,NaptanMetroStation,NaptanRailStation,NaptanBusCoachStation";
 const REFRESH_MS = 30_000;
 const FAVS_KEY = "nextbus.favs.v1";
 
