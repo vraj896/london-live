@@ -214,8 +214,20 @@ async function loadNearby() {
         list.innerHTML = `<div class="error-note">Couldn’t reach TfL (${esc(e.message)}). Pull refresh to retry.</div>`;
       }
     },
-    () => {
-      list.innerHTML = `<div class="error-note">Location was blocked. Enable it in your browser settings, or use Search.</div>`;
+    (err) => {
+      const msgs = {
+        1: `Location is blocked for this site. Click the icon to the left of the address bar → Site settings → set Location to Allow, then try again. On a phone: allow location for your browser in system settings.`,
+        2: `Your device couldn’t work out where it is. On a Mac, check System Settings → Privacy & Security → Location Services is on for your browser. Or just use Search.`,
+        3: `Finding your location took too long.`,
+      };
+      list.innerHTML = `<div class="error-note">${msgs[err.code] || "Location unavailable."}
+          <div class="error-actions">
+            <button class="ghost-btn" id="nearby-retry">↻ try again</button>
+            <button class="ghost-btn" id="nearby-to-search">⌕ use search</button>
+          </div>
+        </div>`;
+      $("nearby-retry").addEventListener("click", loadNearby);
+      $("nearby-to-search").addEventListener("click", () => showView("search"));
     },
     { enableHighAccuracy: false, timeout: 12_000, maximumAge: 60_000 }
   );

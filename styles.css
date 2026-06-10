@@ -277,6 +277,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   padding: 24px 16px;
   line-height: 1.5;
 }
+.error-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
 
 /* ---------- arrivals board ---------- */
 
