@@ -4,6 +4,10 @@ A mobile-first webapp showing live London bus, Tube, Overground, Elizabeth line,
 DLR and tram arrivals, styled after the amber dot-matrix countdown signs at
 London bus stops.
 
+**Live at <https://vraj896.github.io/london-live/>** — open it on your phone
+and "Add to Home Screen" to install it like an app. Deploys automatically on
+every push to `main`.
+
 ## Run it
 
 No build step, no dependencies. Serve the folder over HTTP:
