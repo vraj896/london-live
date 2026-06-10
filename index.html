@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <meta name="description" content="Live London bus, Tube and train arrivals — styled like the countdown signs at the stop." />
+  <title>NEXT BUS — London live arrivals</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Doto:wght@500..900&family=Hanken+Grotesk:ital,wght@0,300..800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="roundel" aria-hidden="true"><span class="roundel-bar"></span></span>
+      <h1>NEXT<em>BUS</em></h1>
+    </div>
+    <div class="clock led" id="clock" aria-label="Current time">--:--</div>
+  </header>
+
+  <div class="status-strip" id="status-strip" aria-label="Line status">
+    <div class="status-loading">checking line status…</div>
+  </div>
+
+  <main id="main">
+
+    <!-- NEARBY -->
+    <section class="view" id="view-nearby" hidden>
+      <div class="view-head">
+        <h2>Nearby stops</h2>
+        <button class="ghost-btn" id="nearby-refresh">↻ refresh</button>
+      </div>
+      <div class="list" id="nearby-list">
+        <div class="hint" id="nearby-hint">
+          <p class="hint-led led">LOCATING…</p>
+          <p>Allow location access to find stops and stations around you.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <section class="view" id="view-search" hidden>
+      <div class="searchbox">
+        <input id="search-input" type="search" inputmode="search" autocomplete="off"
+               placeholder="Stop, station or postcode area…" aria-label="Search stops and stations" />
+      </div>
+      <div class="list" id="search-list">
+        <div class="hint">
+          <p class="hint-led led">TYPE TO SEARCH</p>
+          <p>Try “Brixton”, “Liverpool Street” or a bus stop name.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAVOURITES -->
+    <section class="view" id="view-favs" hidden>
+      <div class="view-head">
+        <h2>Saved stops</h2>
+      </div>
+      <div class="list" id="favs-list"></div>
+    </section>
+
+  </main>
+
+  <!-- ARRIVALS BOARD (overlay) -->
+  <section class="board" id="board" hidden aria-live="polite">
+    <header class="board-head">
+      <button class="ghost-btn back" id="board-back" aria-label="Back">←</button>
+      <div class="board-title">
+        <h2 id="board-name">Stop name</h2>
+        <p id="board-sub">live arrivals</p>
+      </div>
+      <button class="star-btn" id="board-fav" aria-label="Save stop">☆</button>
+    </header>
+    <div class="board-screen">
+      <div class="board-rows" id="board-rows"></div>
+      <footer class="board-foot">
+        <span id="board-updated">connecting…</span>
+        <span class="led board-dotline" aria-hidden="true">• • •</span>
+      </footer>
+    </div>
+  </section>
+
+  <nav class="tabbar" aria-label="Main">
+    <button class="tab" data-view="nearby" id="tab-nearby">
+      <span class="tab-glyph">◉</span><span>Nearby</span>
+    </button>
+    <button class="tab" data-view="search" id="tab-search">
+      <span class="tab-glyph">⌕</span><span>Search</span>
+    </button>
+    <button class="tab" data-view="favs" id="tab-favs">
+      <span class="tab-glyph">★</span><span>Saved</span>
+    </button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+</html>
