@@ -6,14 +6,24 @@
   <meta name="theme-color" content="#0a0a0c" />
   <meta name="description" content="Live London bus, Tube and train arrivals — styled like the countdown signs at the stop." />
   <title>NEXT BUS — London live arrivals</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Doto:wght@500..900&family=Hanken+Grotesk:ital,wght@0,300..800;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
+  <noscript>
+    <p style="padding:24px;text-align:center;font-family:sans-serif;color:#f2efe6">
+      NEXT BUS needs JavaScript to show live arrivals — please enable it.
+    </p>
+  </noscript>
 
   <header class="topbar">
     <div class="brand">
@@ -47,7 +57,7 @@
     <section class="view" id="view-search" hidden>
       <div class="searchbox">
         <input id="search-input" type="search" inputmode="search" autocomplete="off"
-               placeholder="Stop, station or postcode area…" aria-label="Search stops and stations" />
+               placeholder="Stop, station or postcode…" aria-label="Search stops, stations or postcodes" />
       </div>
       <div class="list" id="search-list">
         <div class="hint">
@@ -65,10 +75,11 @@
       <div class="list" id="favs-list"></div>
     </section>
 
+    <footer class="credit">Powered by TfL Open Data · postcode lookup by postcodes.io</footer>
   </main>
 
   <!-- ARRIVALS BOARD (overlay) -->
-  <section class="board" id="board" hidden aria-live="polite">
+  <section class="board" id="board" hidden role="dialog" aria-label="Live arrivals">
     <header class="board-head">
       <button class="ghost-btn back" id="board-back" aria-label="Back">←</button>
       <div class="board-title">
@@ -80,7 +91,7 @@
     <div class="board-screen">
       <div class="board-rows" id="board-rows"></div>
       <footer class="board-foot">
-        <span id="board-updated">connecting…</span>
+        <span id="board-updated" aria-live="polite">connecting…</span>
         <span class="led board-dotline" aria-hidden="true">• • •</span>
       </footer>
     </div>

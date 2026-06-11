@@ -30,6 +30,7 @@ just five static files).
 
 - **Nearby** — geolocates you and lists stops/stations within 700 m, closest first.
 - **Search** — find any stop or station; bus stops show their "towards" direction and zone.
+  Full postcodes (e.g. `SW9 8HE`) work too, geocoded via [postcodes.io](https://postcodes.io).
 - **Saved** — star a stop on its board to pin it (stored in `localStorage`).
 - **Live board** — arrivals sorted by time, auto-refreshing every 30 s, with
   TfL line colours, platform/stop letters, and blinking "due" for <1 min.
@@ -39,7 +40,8 @@ just five static files).
 
 [TfL Unified API](https://api.tfl.gov.uk) — free, CORS-enabled, no API key
 required (anonymous use is rate-limited to ~50 requests/min, plenty for one
-user). Hub stations (e.g. `HUBBRX`) return no arrivals directly, so the app
+user). The app displays the "Powered by TfL Open Data" attribution required
+by TfL's licence. Polling pauses while the tab is hidden. Hub stations (e.g. `HUBBRX`) return no arrivals directly, so the app
 expands them to child stop points and queries each (capped at 12, results
 cached per stop). Trains terminating at the viewed station are filtered out.
 

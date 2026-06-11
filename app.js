@@ -24,6 +24,7 @@ const LINE_COLOURS = {
   "elizabeth-line": "#6950a1",
   elizabeth: "#6950a1",
   tram: "#84b817",
+  "london-overground": "#ee7c0e",
   liberty: "#5d6061",
   lioness: "#faa61a",
   mildmay: "#0077ad",
@@ -68,9 +69,12 @@ async function getJSON(url) {
 }
 
 function esc(s) {
-  const d = document.createElement("div");
-  d.textContent = s ?? "";
-  return d.innerHTML;
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function modeFlag(modes) {
@@ -104,23 +108,43 @@ setInterval(tickClock, 5_000);
 /* ---------------- line status strip ---------------- */
 
 async function loadLineStatus() {
+  if (document.hidden) return;
   const strip = $("status-strip");
   try {
     const lines = await getJSON(`${API}/Line/Mode/tube,dlr,overground,elizabeth-line,tram/Status`);
     strip.innerHTML = lines
       .map((l) => {
-        const st = l.lineStatuses?.[0];
-        const ok = st?.statusSeverity === 10;
+        const statuses = l.lineStatuses || [];
+        const ok = statuses.every((s) => s.statusSeverity === 10);
+        const desc = [...new Set(statuses.map((s) => s.statusSeverityDescription))].join(" + ");
+        const reason = statuses.map((s) => s.reason).filter(Boolean).join(" ");
         const colour = LINE_COLOURS[l.id] || "#555";
-        return `<span class="status-chip ${ok ? "" : "disrupted"}" title="${esc(st?.reason || "")}">
+        return `<button class="status-chip ${ok ? "" : "disrupted"}" data-reason="${esc(reason)}"
+            aria-label="${esc(l.name)}: ${esc(ok ? "good service" : desc)}">
             <span class="swatch" style="background:${colour}"></span>
-            ${esc(l.name)}<span class="state">${esc(ok ? "good" : st?.statusSeverityDescription || "?")}</span>
-          </span>`;
+            ${esc(l.name)}<span class="state">${esc(ok ? "good" : desc || "?")}</span>
+          </button>`;
       })
       .join("");
+    strip.querySelectorAll(".status-chip.disrupted").forEach((chip) =>
+      chip.addEventListener("click", () => toggleStatusReason(chip))
+    );
   } catch {
     strip.innerHTML = `<div class="status-loading">line status unavailable</div>`;
   }
+}
+
+// tapping a disrupted chip shows the reason (title tooltips don't exist on touch)
+function toggleStatusReason(chip) {
+  const existing = document.querySelector(".status-reason");
+  const wasOpen = existing?.dataset.for === chip.dataset.reason;
+  existing?.remove();
+  if (wasOpen || !chip.dataset.reason) return;
+  const note = document.createElement("div");
+  note.className = "status-reason";
+  note.dataset.for = chip.dataset.reason;
+  note.textContent = chip.dataset.reason;
+  $("status-strip").insertAdjacentElement("afterend", note);
 }
 
 /* ---------------- navigation ---------------- */
@@ -130,6 +154,8 @@ function showView(name) {
   for (const v of ["nearby", "search", "favs"]) {
     $(`view-${v}`).hidden = v !== name;
     $(`tab-${v}`).classList.toggle("active", v === name);
+    if (v === name) $(`tab-${v}`).setAttribute("aria-current", "page");
+    else $(`tab-${v}`).removeAttribute("aria-current");
   }
   closeBoard();
   if (name === "favs") renderFavs();
@@ -211,13 +237,13 @@ async function loadNearby() {
         list.innerHTML = stops.map((s) => stopCard(s)).join("");
         bindStopCards(list);
       } catch (e) {
-        list.innerHTML = `<div class="error-note">Couldn’t reach TfL (${esc(e.message)}). Pull refresh to retry.</div>`;
+        list.innerHTML = `<div class="error-note">Couldn’t reach TfL (${esc(e.message)}). Tap refresh to retry.</div>`;
       }
     },
     (err) => {
       const msgs = {
         1: `Location is blocked for this site. Click the icon to the left of the address bar → Site settings → set Location to Allow, then try again. On a phone: allow location for your browser in system settings.`,
-        2: `Your device couldn’t work out where it is. On a Mac, check System Settings → Privacy & Security → Location Services is on for your browser. Or just use Search.`,
+        2: `Your device couldn’t work out where it is. Check that location services are switched on for your browser in your device settings, or just use Search.`,
         3: `Finding your location took too long.`,
       };
       list.innerHTML = `<div class="error-note">${msgs[err.code] || "Location unavailable."}
@@ -241,48 +267,82 @@ $("nearby-refresh").addEventListener("click", () => {
 /* ---------------- search ---------------- */
 
 let searchTimer = null;
+let searchSeq = 0; // discard out-of-order responses
 $("search-input").addEventListener("input", (e) => {
   clearTimeout(searchTimer);
   const q = e.target.value.trim();
   if (q.length < 3) {
+    searchSeq++;
     $("search-list").innerHTML = `<div class="hint"><p class="hint-led led">TYPE TO SEARCH</p><p>At least 3 characters.</p></div>`;
     return;
   }
   searchTimer = setTimeout(() => runSearch(q), 350);
 });
 
+const POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
+
 async function runSearch(q) {
+  const seq = ++searchSeq;
   const list = $("search-list");
   list.innerHTML = `<div class="hint"><p class="hint-led led">SEARCHING…</p></div>`;
   try {
-    const data = await getJSON(
-      `${API}/StopPoint/Search/${encodeURIComponent(q)}?modes=${MODES}&maxResults=18`
-    );
-    const matches = (data.matches || []).map((m) => ({
-      id: m.id,
-      name: m.name,
-      modes: m.modes || [],
-      towards: m.towards,
-      zone: m.zone,
-    }));
+    const matches = POSTCODE_RE.test(q) ? await searchByPostcode(q) : await searchByName(q);
+    if (seq !== searchSeq) return; // a newer search superseded this one
     if (!matches.length) {
-      list.innerHTML = `<div class="hint"><p class="hint-led led">NO MATCHES</p><p>Try a different spelling.</p></div>`;
+      list.innerHTML = `<div class="hint"><p class="hint-led led">NO MATCHES</p><p>Try a different spelling, or a full postcode like SW9 8HE.</p></div>`;
       return;
     }
     list.innerHTML = matches
       .map((s) =>
         stopCard(
           s,
-          [s.towards ? `towards ${s.towards}` : s.modes.join(" · "), s.zone ? `zone ${s.zone}` : null]
-            .filter(Boolean)
-            .join(" · ")
+          s.distance != null
+            ? ""
+            : [s.towards ? `towards ${s.towards}` : s.modes.join(" · "), s.zone ? `zone ${s.zone}` : null]
+                .filter(Boolean)
+                .join(" · ")
         )
       )
       .join("");
     bindStopCards(list);
   } catch (e) {
+    if (seq !== searchSeq) return;
     list.innerHTML = `<div class="error-note">Search failed (${esc(e.message)}).</div>`;
   }
+}
+
+async function searchByName(q) {
+  const data = await getJSON(
+    `${API}/StopPoint/Search/${encodeURIComponent(q)}?modes=${MODES}&maxResults=18`
+  );
+  return (data.matches || []).map((m) => ({
+    id: m.id,
+    name: m.name,
+    modes: m.modes || [],
+    towards: m.towards,
+    zone: m.zone,
+  }));
+}
+
+// full UK postcode → coordinates (postcodes.io, free) → stops around it
+async function searchByPostcode(q) {
+  const pc = await getJSON(`https://api.postcodes.io/postcodes/${encodeURIComponent(q)}`);
+  const { latitude, longitude } = pc.result;
+  const data = await getJSON(
+    `${API}/StopPoint/?lat=${latitude}&lon=${longitude}&radius=700&modes=${MODES}&stopTypes=${STOP_TYPES}&returnLines=true`
+  );
+  return (data.stopPoints || [])
+    .filter((s) => s.commonName)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, 18)
+    .map((s) => ({
+      id: s.id,
+      name: s.commonName,
+      indicator: s.indicator,
+      modes: s.modes,
+      lines: s.lines,
+      distance: s.distance,
+    }));
 }
 
 /* ---------------- favourites ---------------- */
@@ -293,8 +353,21 @@ function renderFavs() {
     list.innerHTML = `<div class="hint"><p class="hint-led led">NO SAVED STOPS</p><p>Open a stop and tap the star to pin it here.</p></div>`;
     return;
   }
-  list.innerHTML = state.favs.map((s) => stopCard(s, s.modes.join(" · "))).join("");
+  list.innerHTML = state.favs
+    .map(
+      (s) => `<div class="fav-row">${stopCard(s, s.modes.join(" · "))}
+        <button class="fav-remove" data-id="${esc(s.id)}" aria-label="Remove ${esc(s.name)} from saved stops">✕</button>
+      </div>`
+    )
+    .join("");
   bindStopCards(list);
+  list.querySelectorAll(".fav-remove").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      state.favs = state.favs.filter((f) => f.id !== btn.dataset.id);
+      saveFavs();
+      renderFavs();
+    })
+  );
 }
 
 function toggleFav() {
@@ -322,12 +395,17 @@ $("board-fav").addEventListener("click", toggleFav);
 /* ---------------- arrivals board ---------------- */
 
 function openBoard(stop) {
-  state.board = { ...stop, leafIds: null };
+  state.board = { ...stop, leafIds: null, firstRender: true };
+  state.boardOpener = document.activeElement;
   $("board-name").textContent = stop.name;
   $("board-sub").textContent = "live arrivals";
   $("board-rows").innerHTML = `<div class="board-empty"><span class="led">CONNECTING…</span></div>`;
   $("board-updated").textContent = "connecting…";
   $("board").hidden = false;
+  // keep keyboard/screen-reader focus inside the overlay
+  $("main").inert = true;
+  document.querySelector(".tabbar").inert = true;
+  $("board-back").focus();
   updateFavButton();
   refreshBoard();
   state.boardTimer = setInterval(refreshBoard, REFRESH_MS);
@@ -339,7 +417,19 @@ function closeBoard() {
   state.boardTimer = null;
   state.board = null;
   $("board").hidden = true;
+  $("main").inert = false;
+  document.querySelector(".tabbar").inert = false;
+  if (state.view === "favs") renderFavs(); // reflect any star changes
+  if (state.boardOpener?.isConnected) state.boardOpener.focus({ preventScroll: true });
+  state.boardOpener = null;
 }
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && state.board) {
+    closeBoard();
+    if (location.hash === "#stop") history.back();
+  }
+});
 
 $("board-back").addEventListener("click", () => {
   closeBoard();
@@ -393,6 +483,9 @@ async function refreshBoard() {
 
 function renderArrivals(arrivals) {
   const rows = $("board-rows");
+  // animate rows on the first paint only, not on every 30s refresh
+  rows.classList.toggle("no-anim", !state.board?.firstRender);
+  if (state.board) state.board.firstRender = false;
   if (!arrivals.length) {
     rows.innerHTML = `<div class="board-empty"><span class="led">NO DEPARTURES</span>Nothing due in the next 30 minutes.<br/>Check line status above for disruptions.</div>`;
     return;
@@ -448,8 +541,25 @@ function abbrevLine(name = "") {
   return short[name] || name;
 }
 
+/* ---------------- lifecycle ---------------- */
+
+// pause polling while the tab is hidden; catch up immediately on return
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (state.boardTimer) clearInterval(state.boardTimer);
+    state.boardTimer = null;
+  } else {
+    loadLineStatus();
+    if (state.board && !state.boardTimer) {
+      refreshBoard();
+      state.boardTimer = setInterval(refreshBoard, REFRESH_MS);
+    }
+  }
+});
+
 /* ---------------- boot ---------------- */
 
+if (location.hash) history.replaceState(null, "", location.pathname); // clear stale #stop
 loadLineStatus();
 setInterval(loadLineStatus, 120_000);
 showView("nearby");
