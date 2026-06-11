@@ -515,7 +515,7 @@ function renderArrivals(arrivals) {
         .filter(Boolean)
         .join(" · ");
       return `<div class="arr-row" style="--i:${i}">
-          <span class="arr-line" style="background:${bg};color:${fg}">${esc(a.modeName === "bus" ? a.lineName : abbrevLine(a.lineName))}</span>
+          <span class="arr-line${a.modeName === "bus" ? "" : " code"}" style="background:${bg};color:${fg}">${esc(a.modeName === "bus" ? a.lineName : abbrevLine(a.lineName))}</span>
           <span class="arr-dest">
             <span class="to">${esc(dest)}</span>
             ${plat ? `<span class="plat">${esc(plat)}</span>` : ""}
@@ -526,21 +526,30 @@ function renderArrivals(arrivals) {
     .join("");
 }
 
+// TfL-style three-letter codes (H&C and W&C kept by user preference)
 function abbrevLine(name = "") {
   const short = {
+    Bakerloo: "BAK",
+    Central: "CEN",
+    Circle: "CIR",
+    District: "DIS",
     "Hammersmith & City": "H&C",
+    Jubilee: "JUB",
+    Metropolitan: "MET",
+    Northern: "NOR",
+    Piccadilly: "PIC",
+    Victoria: "VIC",
     "Waterloo & City": "W&C",
-    "Elizabeth line": "Eliz",
-    Elizabeth: "Eliz",
-    Metropolitan: "Met",
-    Piccadilly: "Picc",
-    Bakerloo: "Bkr",
-    Victoria: "Vic",
-    Northern: "Nthn",
-    Jubilee: "Jub",
-    District: "Dist",
-    Central: "Cent",
-    Circle: "Circ",
+    "Elizabeth line": "ELZ",
+    Elizabeth: "ELZ",
+    "London Overground": "OVG",
+    Liberty: "LIB",
+    Lioness: "LIO",
+    Mildmay: "MIL",
+    Suffragette: "SUF",
+    Weaver: "WEA",
+    Windrush: "WIN",
+    Tram: "TRM",
   };
   return short[name] || name;
 }
@@ -679,7 +688,7 @@ async function showStopSheet(stop) {
             const [bg, fg] = lineColour(a);
             const mins = Math.floor(a.timeToStation / 60);
             return `<div class="sheet-row">
-                <span class="arr-line" style="background:${bg};color:${fg}">${esc(a.modeName === "bus" ? a.lineName : abbrevLine(a.lineName))}</span>
+                <span class="arr-line${a.modeName === "bus" ? "" : " code"}" style="background:${bg};color:${fg}">${esc(a.modeName === "bus" ? a.lineName : abbrevLine(a.lineName))}</span>
                 <span class="sheet-dest">${esc(cleanDest(a.destinationName) || a.towards || "")}</span>
                 <span class="led sheet-mins">${mins < 1 ? "due" : mins + " min"}</span>
               </div>`;

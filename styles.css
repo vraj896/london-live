@@ -601,6 +601,12 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   letter-spacing: 0.02em;
 }
 
+.arr-line.code {
+  font-family: var(--font-led);
+  letter-spacing: 0.09em;
+  font-size: 0.88rem;
+}
+
 .arr-dest { flex: 1; min-width: 0; }
 .arr-dest .to {
   display: block;
