@@ -37,6 +37,12 @@
     <div class="status-loading">checking line status…</div>
   </div>
 
+  <div class="install-banner" id="install-banner" hidden>
+    <span class="install-text">Add <strong>NEXT&nbsp;BUS</strong> to your home screen — opens like an app</span>
+    <button class="ghost-btn" id="install-go">install</button>
+    <button class="install-dismiss" id="install-dismiss" aria-label="Dismiss install suggestion">✕</button>
+  </div>
+
   <main id="main">
 
     <!-- NEARBY -->
@@ -96,6 +102,19 @@
       </footer>
     </div>
   </section>
+
+  <div class="modal" id="ios-install" hidden role="dialog" aria-modal="true" aria-label="How to add to home screen">
+    <div class="modal-card">
+      <h3>Add to Home Screen</h3>
+      <ol>
+        <li>Open this page in <strong>Safari</strong> (if you aren’t already)</li>
+        <li>Tap the <strong>Share</strong> button
+          <svg class="share-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 8 6h3v9h2V6h3l-4-4z"/><path d="M5 10v10h14V10h-4v2h2v6H7v-6h2v-2H5z"/></svg></li>
+        <li>Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong></li>
+      </ol>
+      <button class="ghost-btn" id="ios-install-close">got it</button>
+    </div>
+  </div>
 
   <nav class="tabbar" aria-label="Main">
     <button class="tab" data-view="nearby" id="tab-nearby">

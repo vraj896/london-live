@@ -153,6 +153,72 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   border-bottom: 1px solid rgba(255, 93, 77, 0.3);
 }
 
+/* ---------- install banner & modal ---------- */
+
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 720px;
+  margin: 14px 16px 0;
+  padding: 11px 12px 11px 16px;
+  background: linear-gradient(135deg, rgba(255,184,28,0.10), rgba(255,184,28,0.03));
+  border: 1px solid rgba(255, 184, 28, 0.35);
+  border-radius: 14px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+@media (min-width: 760px) {
+  .install-banner { margin-left: auto; margin-right: auto; }
+}
+.install-text { flex: 1; min-width: 0; }
+.install-dismiss {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.9rem;
+  padding: 6px 8px;
+}
+
+.modal[hidden] { display: none; }
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+.modal-card {
+  width: min(420px, 100%);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.modal-card h3 {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+.modal-card ol {
+  margin: 0 0 18px 18px;
+  display: grid;
+  gap: 10px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.share-glyph {
+  width: 18px;
+  height: 18px;
+  vertical-align: -3px;
+  margin-left: 4px;
+  fill: var(--amber);
+}
+
 /* ---------- views ---------- */
 
 .view { padding: 18px 16px 8px; max-width: 720px; margin: 0 auto; }

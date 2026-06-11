@@ -425,7 +425,10 @@ function closeBoard() {
 }
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && state.board) {
+  if (e.key !== "Escape") return;
+  if (!$("ios-install").hidden) {
+    closeIosModal();
+  } else if (state.board) {
     closeBoard();
     if (location.hash === "#stop") history.back();
   }
@@ -541,6 +544,58 @@ function abbrevLine(name = "") {
   return short[name] || name;
 }
 
+/* ---------------- install banner ---------------- */
+
+const INSTALL_DISMISS_KEY = "nextbus.install.dismissed";
+let installEvent = null; // captured beforeinstallprompt (Chrome/Edge/Android)
+const isStandalone =
+  matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS =
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+function maybeShowInstallBanner() {
+  if (isStandalone || localStorage.getItem(INSTALL_DISMISS_KEY)) return;
+  if (installEvent || isIOS) $("install-banner").hidden = false;
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installEvent = e;
+  maybeShowInstallBanner();
+});
+
+window.addEventListener("appinstalled", () => {
+  $("install-banner").hidden = true;
+});
+
+$("install-go").addEventListener("click", async () => {
+  if (installEvent) {
+    installEvent.prompt();
+    const { outcome } = await installEvent.userChoice;
+    if (outcome === "accepted") $("install-banner").hidden = true;
+    installEvent = null;
+  } else {
+    // iOS: no programmatic install — show the Share → Add to Home Screen steps
+    $("ios-install").hidden = false;
+    $("ios-install-close").focus();
+  }
+});
+
+$("install-dismiss").addEventListener("click", () => {
+  $("install-banner").hidden = true;
+  localStorage.setItem(INSTALL_DISMISS_KEY, "1");
+});
+
+function closeIosModal() {
+  $("ios-install").hidden = true;
+  $("install-go").focus();
+}
+$("ios-install-close").addEventListener("click", closeIosModal);
+$("ios-install").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) closeIosModal(); // backdrop tap
+});
+
 /* ---------------- lifecycle ---------------- */
 
 // pause polling while the tab is hidden; catch up immediately on return
@@ -562,4 +617,5 @@ document.addEventListener("visibilitychange", () => {
 if (location.hash) history.replaceState(null, "", location.pathname); // clear stale #stop
 loadLineStatus();
 setInterval(loadLineStatus, 120_000);
+maybeShowInstallBanner();
 showView("nearby");
