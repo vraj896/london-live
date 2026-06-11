@@ -151,7 +151,7 @@ function toggleStatusReason(chip) {
 
 function showView(name) {
   state.view = name;
-  for (const v of ["nearby", "search", "favs"]) {
+  for (const v of ["nearby", "map", "search", "favs"]) {
     $(`view-${v}`).hidden = v !== name;
     $(`tab-${v}`).classList.toggle("active", v === name);
     if (v === name) $(`tab-${v}`).setAttribute("aria-current", "page");
@@ -161,6 +161,7 @@ function showView(name) {
   if (name === "favs") renderFavs();
   if (name === "nearby" && !state.nearbyLoaded) loadNearby();
   if (name === "search") $("search-input").focus({ preventScroll: true });
+  if (name === "map") setTimeout(initMap, 0); // after the view is unhidden so Leaflet can measure it
 }
 
 document.querySelectorAll(".tab").forEach((t) =>
@@ -544,6 +545,166 @@ function abbrevLine(name = "") {
   return short[name] || name;
 }
 
+/* ---------------- map ---------------- */
+
+const MAP_MIN_ZOOM_FOR_STOPS = 15;
+let map = null;
+const mapMarkers = new Map(); // naptanId → Leaflet marker
+let mapFetchTimer = null;
+let selectedPin = null;
+
+function sizeMap() {
+  if ($("view-map").hidden) return;
+  window.scrollTo(0, 0);
+  const top = $("map").getBoundingClientRect().top;
+  const tabbar = document.querySelector(".tabbar").getBoundingClientRect().height;
+  $("map").style.height = `${Math.max(300, window.innerHeight - top - tabbar)}px`;
+  map?.invalidateSize();
+}
+window.addEventListener("resize", sizeMap);
+
+function initMap() {
+  if ($("view-map").hidden) return;
+  if (typeof L === "undefined") {
+    // Leaflet (deferred script) hasn't finished loading yet
+    setTimeout(initMap, 150);
+    return;
+  }
+  sizeMap();
+  if (map) {
+    map.invalidateSize();
+    return;
+  }
+  map = L.map("map", { zoomControl: false }).setView([51.5074, -0.1278], 16);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  }).addTo(map);
+  map.on("moveend", scheduleMapFetch);
+  map.on("click", hideStopSheet);
+  navigator.geolocation?.getCurrentPosition(
+    (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 16),
+    () => {},
+    { timeout: 8_000, maximumAge: 120_000 }
+  );
+  scheduleMapFetch();
+}
+
+function scheduleMapFetch() {
+  clearTimeout(mapFetchTimer);
+  mapFetchTimer = setTimeout(fetchMapStops, 400);
+}
+
+async function fetchMapStops() {
+  if (!map || $("view-map").hidden) return;
+  if (map.getZoom() < MAP_MIN_ZOOM_FOR_STOPS) {
+    $("map-hint").hidden = false;
+    return;
+  }
+  $("map-hint").hidden = true;
+  const c = map.getCenter();
+  const radius = Math.min(900, Math.round(c.distanceTo(map.getBounds().getNorthEast())));
+  try {
+    const data = await getJSON(
+      `${API}/StopPoint/?lat=${c.lat}&lon=${c.lng}&radius=${radius}&modes=${MODES}&stopTypes=${STOP_TYPES}&returnLines=true`
+    );
+    renderMapStops((data.stopPoints || []).filter((s) => s.commonName && s.lat && s.lon));
+  } catch {
+    /* transient map fetch errors are non-fatal; next pan retries */
+  }
+}
+
+function pinIcon(isRail, selected) {
+  return L.divIcon({
+    className: "",
+    html: `<span class="map-pin ${isRail ? "rail" : ""} ${selected ? "sel" : ""}"><span></span></span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+}
+
+function renderMapStops(stops) {
+  if (mapMarkers.size > 300) {
+    for (const [, m] of mapMarkers) m.remove();
+    mapMarkers.clear();
+    selectedPin = null;
+  }
+  for (const s of stops) {
+    if (mapMarkers.has(s.id)) continue;
+    const isRail = (s.modes || []).some((m) => m !== "bus");
+    const marker = L.marker([s.lat, s.lon], {
+      icon: pinIcon(isRail, false),
+      keyboard: false,
+    }).addTo(map);
+    marker.isRail = isRail;
+    marker.on("click", () =>
+      selectMapStop(
+        { id: s.id, name: s.commonName, indicator: s.indicator, modes: s.modes || [], lines: s.lines },
+        marker
+      )
+    );
+    mapMarkers.set(s.id, marker);
+  }
+}
+
+function selectMapStop(stop, marker) {
+  if (selectedPin) selectedPin.setIcon(pinIcon(selectedPin.isRail, false));
+  marker.setIcon(pinIcon(marker.isRail, true));
+  selectedPin = marker;
+  showStopSheet(stop);
+}
+
+async function showStopSheet(stop) {
+  const sheet = $("stop-sheet");
+  sheet.hidden = false;
+  sheet.innerHTML = `<div class="sheet-head">
+      <span class="sheet-name">${esc(stop.name)}${stop.indicator ? ` <small>${esc(stop.indicator)}</small>` : ""}</span>
+      <button class="sheet-close" id="sheet-close" aria-label="Close stop preview">✕</button>
+    </div>
+    <div class="sheet-rows" id="sheet-rows"><span class="led sheet-loading">CONNECTING…</span></div>
+    <button class="ghost-btn sheet-open" id="sheet-open">open live board →</button>`;
+  $("sheet-close").addEventListener("click", hideStopSheet);
+  $("sheet-open").addEventListener("click", () => openBoard(stop));
+  try {
+    const arrivals = await arrivalsFor([stop.id]);
+    if (sheet.hidden) return;
+    const next = arrivals
+      .filter((a) => !(a.destinationNaptanId && a.destinationNaptanId === a.naptanId))
+      .sort((a, b) => a.timeToStation - b.timeToStation)
+      .slice(0, 3);
+    $("sheet-rows").innerHTML = next.length
+      ? next
+          .map((a) => {
+            const [bg, fg] = lineColour(a);
+            const mins = Math.floor(a.timeToStation / 60);
+            return `<div class="sheet-row">
+                <span class="arr-line" style="background:${bg};color:${fg}">${esc(a.modeName === "bus" ? a.lineName : abbrevLine(a.lineName))}</span>
+                <span class="sheet-dest">${esc(cleanDest(a.destinationName) || a.towards || "")}</span>
+                <span class="led sheet-mins">${mins < 1 ? "due" : mins + " min"}</span>
+              </div>`;
+          })
+          .join("")
+      : `<span class="sheet-none">nothing due in the next 30 min</span>`;
+  } catch {
+    if (!sheet.hidden) $("sheet-rows").innerHTML = `<span class="sheet-none">couldn’t load arrivals</span>`;
+  }
+}
+
+function hideStopSheet() {
+  $("stop-sheet").hidden = true;
+  if (selectedPin) selectedPin.setIcon(pinIcon(selectedPin.isRail, false));
+  selectedPin = null;
+}
+
+$("map-locate").addEventListener("click", () => {
+  navigator.geolocation?.getCurrentPosition(
+    (pos) => map?.setView([pos.coords.latitude, pos.coords.longitude], 16),
+    () => {},
+    { timeout: 8_000 }
+  );
+});
+
 /* ---------------- install banner ---------------- */
 
 const INSTALL_DISMISS_KEY = "nextbus.install.dismissed";
@@ -585,6 +746,7 @@ $("install-go").addEventListener("click", async () => {
 $("install-dismiss").addEventListener("click", () => {
   $("install-banner").hidden = true;
   localStorage.setItem(INSTALL_DISMISS_KEY, "1");
+  sizeMap(); // banner removal changes the map's top offset
 });
 
 function closeIosModal() {

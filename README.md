@@ -29,6 +29,9 @@ just five static files).
 ## Features
 
 - **Nearby** — geolocates you and lists stops/stations within 700 m, closest first.
+- **Map** — dark Leaflet map (free CARTO tiles, no API key) with roundel pins for
+  every stop in view; tap a pin for the next three arrivals, then open the full board.
+  Stops load for wherever you pan; zoom in past level 15 to see them.
 - **Search** — find any stop or station; bus stops show their "towards" direction and zone.
   Full postcodes (e.g. `SW9 8HE`) work too, geocoded via [postcodes.io](https://postcodes.io).
 - **Saved** — star a stop on its board to pin it (stored in `localStorage`).

@@ -15,6 +15,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Doto:wght@500..900&family=Hanken+Grotesk:ital,wght@0,300..800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer crossorigin=""></script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -57,6 +59,14 @@
           <p>Allow location access to find stops and stations around you.</p>
         </div>
       </div>
+    </section>
+
+    <!-- MAP -->
+    <section class="view view-map" id="view-map" hidden>
+      <div id="map" aria-label="Map of stops and stations"></div>
+      <p class="map-hint" id="map-hint" hidden>zoom in to see stops</p>
+      <button class="map-locate" id="map-locate" aria-label="Centre map on my location">◎</button>
+      <div class="stop-sheet" id="stop-sheet" hidden></div>
     </section>
 
     <!-- SEARCH -->
@@ -119,6 +129,9 @@
   <nav class="tabbar" aria-label="Main">
     <button class="tab" data-view="nearby" id="tab-nearby">
       <span class="tab-glyph">◉</span><span>Nearby</span>
+    </button>
+    <button class="tab" data-view="map" id="tab-map">
+      <span class="tab-glyph">▦</span><span>Map</span>
     </button>
     <button class="tab" data-view="search" id="tab-search">
       <span class="tab-glyph">⌕</span><span>Search</span>
