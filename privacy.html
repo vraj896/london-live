@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <title>Privacy — NEXT BUS</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Doto:wght@500..900&family=Hanken+Grotesk:ital,wght@0,300..800;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .legal { max-width: 640px; margin: 0 auto; padding: 28px 20px 60px; line-height: 1.65; }
+    .legal h1 { font-size: 1.3rem; margin-bottom: 4px; }
+    .legal h2 { font-size: 0.95rem; margin: 26px 0 8px; color: var(--amber); }
+    .legal p, .legal li { font-size: 0.92rem; color: var(--ink); }
+    .legal ul { padding-left: 20px; display: grid; gap: 6px; }
+    .legal .updated { color: var(--muted); font-size: 0.8rem; margin-bottom: 18px; }
+    .legal a { color: var(--amber); }
+  </style>
+</head>
+<body>
+  <main class="legal">
+    <p><a href="./">← back to NEXT BUS</a></p>
+    <h1>Privacy policy</h1>
+    <p class="updated">Last updated 12 June 2026</p>
+
+    <p>NEXT BUS shows live London transport arrivals. It is built to know as
+    little about you as possible.</p>
+
+    <h2>What the app stores</h2>
+    <ul>
+      <li><strong>Saved stops, theme choice, and dismissed banners</strong> are stored in your
+        browser's local storage, on your device only. They are never sent anywhere.</li>
+      <li>The app has <strong>no accounts, no analytics, no advertising, and no tracking</strong>
+        of any kind. We run no servers and keep no databases.</li>
+    </ul>
+
+    <h2>Location</h2>
+    <p>If you allow location access, your coordinates are used on your device to
+    find nearby stops and to centre the map. They are sent only as part of the
+    request to Transport for London's API to fetch stops around you, and are
+    never stored by us. You can use the app fully without location via Search.</p>
+
+    <h2>Third-party services the app talks to</h2>
+    <p>Like any website, these services see your IP address when the app
+    requests data from them:</p>
+    <ul>
+      <li><a href="https://tfl.gov.uk/corporate/privacy-and-cookies/">Transport for London</a> — live arrival and stop data</li>
+      <li><a href="https://postcodes.io">postcodes.io</a> — converting a postcode you type into coordinates</li>
+      <li><a href="https://carto.com/privacy">CARTO</a> / OpenStreetMap — map tiles</li>
+      <li><a href="https://policies.google.com/privacy">Google Fonts</a> and cdnjs — fonts and the map library</li>
+    </ul>
+
+    <h2>Changes & contact</h2>
+    <p>If this policy changes, the date above will be updated. Questions:
+    open an issue at
+    <a href="https://github.com/vraj896/london-live">github.com/vraj896/london-live</a>.</p>
+  </main>
+</body>
+</html>

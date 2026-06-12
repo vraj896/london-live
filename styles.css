@@ -111,22 +111,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 
 .brand { display: flex; align-items: center; gap: 10px; }
 
-.roundel {
-  position: relative;
-  width: 30px; height: 30px;
-  border: 4px solid var(--bus-red);
-  border-radius: 50%;
-  display: inline-block;
-  flex: none;
-}
-.roundel-bar {
-  position: absolute;
-  left: -7px; right: -7px; top: 50%;
-  height: 7px;
-  transform: translateY(-50%);
-  background: var(--roundel-blue);
-  border-radius: 1px;
-}
+.brand-mark { width: 30px; height: 30px; flex: none; }
 
 .brand h1 {
   font-size: 1.05rem;
@@ -545,6 +530,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   letter-spacing: 0.06em;
   padding: 22px 16px 10px;
 }
+.credit a { color: var(--muted); }
 
 .hint {
   text-align: center;
@@ -655,6 +641,24 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
   flex: 1;
   overflow-y: auto;
   padding: 10px 4px;
+}
+
+.plat-head {
+  padding: 14px 14px 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+.plat-head::before {
+  content: "";
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 2px;
+  background: var(--amber);
+  margin-right: 8px;
+  vertical-align: 1px;
 }
 
 .arr-row {

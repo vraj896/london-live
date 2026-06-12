@@ -588,27 +588,48 @@ function renderArrivals(arrivals) {
     rows.innerHTML = `<div class="board-empty"><span class="led">NO DEPARTURES</span>Nothing due in the next 30 minutes.</div>`;
     return;
   }
-  rows.innerHTML = sorted
-    .map((a, i) => {
-      const [bg, fg] = lineColour(a);
-      const mins = Math.floor(a.timeToStation / 60);
-      const due = mins < 1;
-      const dest = cleanDest(a.destinationName) || a.towards || "Check front of train";
-      const platName = a.platformName && !/^null$/i.test(a.platformName) ? a.platformName : null;
-      const plat = [platName ? (a.modeName === "bus" ? `Stop ${platName}` : platName) : null,
-                    a.modeName !== "bus" ? a.lineName : null]
-        .filter(Boolean)
-        .join(" · ");
-      return `<div class="arr-row" style="--i:${i}">
-          <span class="arr-line${a.modeName === "bus" ? "" : " code"}" style="background:${bg};color:${fg}">${esc(a.modeName === "bus" ? a.lineName : abbrevLine(a.lineName))}</span>
-          <span class="arr-dest">
-            <span class="to">${esc(dest)}</span>
-            ${plat ? `<span class="plat">${esc(plat)}</span>` : ""}
-          </span>
-          <span class="arr-time led ${due ? "due" : ""}">${due ? "due" : mins}<small>${due ? "now" : mins === 1 ? "min" : "mins"}</small></span>
-        </div>`;
-    })
-    .join("");
+  // trains grouped by platform (each platform's arrivals in time order); buses by time
+  const rail = sorted.filter((a) => a.modeName !== "bus");
+  const buses = sorted.filter((a) => a.modeName === "bus");
+  let html = "";
+  let i = 0;
+  if (rail.length) {
+    const platforms = new Map();
+    for (const a of rail) {
+      const key = a.platformName && !/^null$/i.test(a.platformName) ? a.platformName : "Platform —";
+      if (!platforms.has(key)) platforms.set(key, []);
+      platforms.get(key).push(a);
+    }
+    for (const key of [...platforms.keys()].sort((x, y) => x.localeCompare(y, "en", { numeric: true }))) {
+      html += `<div class="plat-head">${esc(key)}</div>`;
+      html += platforms.get(key).map((a) => arrRow(a, i++, false)).join("");
+    }
+  }
+  if (buses.length) {
+    if (rail.length) html += `<div class="plat-head">Buses</div>`;
+    html += buses.map((a) => arrRow(a, i++, true)).join("");
+  }
+  rows.innerHTML = html;
+}
+
+function arrRow(a, i, showPlatform) {
+  const [bg, fg] = lineColour(a);
+  const mins = Math.floor(a.timeToStation / 60);
+  const due = mins < 1;
+  const dest = cleanDest(a.destinationName) || a.towards || "Check front of train";
+  const platName = a.platformName && !/^null$/i.test(a.platformName) ? a.platformName : null;
+  const sub = [showPlatform && platName ? (a.modeName === "bus" ? `Stop ${platName}` : platName) : null,
+               a.modeName !== "bus" ? a.lineName : null]
+    .filter(Boolean)
+    .join(" · ");
+  return `<div class="arr-row" style="--i:${i}">
+      <span class="arr-line${a.modeName === "bus" ? "" : " code"}" style="background:${bg};color:${fg}">${esc(a.modeName === "bus" ? a.lineName : abbrevLine(a.lineName))}</span>
+      <span class="arr-dest">
+        <span class="to">${esc(dest)}</span>
+        ${sub ? `<span class="plat">${esc(sub)}</span>` : ""}
+      </span>
+      <span class="arr-time led ${due ? "due" : ""}">${due ? "due" : mins}<small>${due ? "now" : mins === 1 ? "min" : "mins"}</small></span>
+    </div>`;
 }
 
 // TfL-style three-letter codes (H&C and W&C kept by user preference)
@@ -875,6 +896,7 @@ document.addEventListener("visibilitychange", () => {
 /* ---------------- boot ---------------- */
 
 if (location.hash) history.replaceState(null, "", location.pathname); // clear stale #stop
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 loadLineStatus();
 setInterval(loadLineStatus, 120_000);
 maybeShowInstallBanner();
