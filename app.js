@@ -44,7 +44,42 @@ const state = {
   boardTimer: null,
   lastUpdated: null,
   nearbyLoaded: false,
+  nearbyStops: [],
+  filter: "all",
 };
+
+/* ---------------- theme ---------------- */
+
+const THEME_KEY = "nextbus.theme";
+const THEME_GLYPHS = { auto: "◐", light: "☀", dark: "☾" };
+
+function resolvedTheme() {
+  const pref = localStorage.getItem(THEME_KEY) || "auto";
+  if (pref !== "auto") return pref;
+  return matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+}
+
+function applyTheme() {
+  const pref = localStorage.getItem(THEME_KEY) || "auto";
+  const theme = resolvedTheme();
+  document.documentElement.dataset.theme = theme;
+  const btn = $("theme-toggle");
+  btn.textContent = THEME_GLYPHS[pref];
+  btn.setAttribute("aria-label", `Theme: ${pref}${pref === "auto" ? " (follows device)" : ""} — tap to change`);
+  document.querySelector('meta[name="theme-color"]').content = theme === "light" ? "#f4f2ec" : "#0a0a0c";
+  if (typeof tileLayer !== "undefined" && tileLayer) {
+    tileLayer.setUrl(`https://{s}.basemaps.cartocdn.com/${theme === "light" ? "light_all" : "dark_all"}/{z}/{x}/{y}{r}.png`);
+  }
+}
+
+$("theme-toggle").addEventListener("click", () => {
+  const order = ["auto", "light", "dark"];
+  const cur = localStorage.getItem(THEME_KEY) || "auto";
+  localStorage.setItem(THEME_KEY, order[(order.indexOf(cur) + 1) % order.length]);
+  applyTheme();
+});
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
+applyTheme();
 
 /* ---------------- utilities ---------------- */
 
@@ -77,12 +112,8 @@ function esc(s) {
     .replaceAll("'", "&#39;");
 }
 
-function modeFlag(modes) {
-  const hasBus = modes.includes("bus");
-  const hasRail = modes.some((m) => m !== "bus");
-  if (hasBus && hasRail) return ["mixed", "⇄"];
-  if (hasRail) return ["rail", "⊖"];
-  return ["", "BUS"];
+function flagColour(modes) {
+  return modes.some((m) => m !== "bus") ? "var(--roundel-blue)" : "var(--bus-red)";
 }
 
 function lineColour(arr) {
@@ -172,7 +203,6 @@ document.querySelectorAll(".tab").forEach((t) =>
 
 function stopCard(stop, extra = "") {
   const modes = stop.modes || [];
-  const [flagClass, flagText] = modeFlag(modes);
   const lines = (stop.lines || []).map((l) => l.name);
   const meta =
     extra ||
@@ -180,14 +210,41 @@ function stopCard(stop, extra = "") {
       ? lines.slice(0, 7).join(" · ") + (lines.length > 7 ? " …" : "")
       : modes.join(" · ")) ||
     "stop";
-  return `<button class="stop-card" data-id="${esc(stop.id)}" data-name="${esc(stop.name)}" data-modes="${esc(modes.join(","))}">
-      <span class="stop-flag ${flagClass}">${flagText}</span>
+  return `<button class="stop-card" style="--flag:${flagColour(modes)}" data-id="${esc(stop.id)}" data-name="${esc(stop.name)}" data-modes="${esc(modes.join(","))}">
       <span class="stop-info">
         <span class="stop-name">${esc(stop.name)}${stop.indicator ? ` <small style="color:var(--muted)">${esc(stop.indicator)}</small>` : ""}</span>
         <span class="stop-meta">${esc(meta)}</span>
       </span>
-      ${stop.distance != null ? `<span class="stop-dist">${Math.round(stop.distance)} m</span>` : ""}
+      <span class="stop-right">
+        <span class="stop-next led"></span>
+        ${stop.distance != null ? `<span class="stop-dist">${Math.round(stop.distance)} m</span>` : ""}
+      </span>
     </button>`;
+}
+
+function skeletons(n) {
+  return Array.from({ length: n }, () => `<div class="skel"></div>`).join("");
+}
+
+// fill "next departure" on cards in-list (capped to limit API chatter)
+async function fillNextDepartures(stops, container) {
+  await Promise.all(
+    stops.slice(0, 8).map(async (s) => {
+      try {
+        const arrivals = await arrivalsFor([s.id]);
+        const next = arrivals
+          .filter((a) => !(a.destinationNaptanId && a.destinationNaptanId === a.naptanId))
+          .sort((a, b) => a.timeToStation - b.timeToStation)[0];
+        const el = container.querySelector(`[data-id="${CSS.escape(s.id)}"] .stop-next`);
+        if (el && next) {
+          const mins = Math.floor(next.timeToStation / 60);
+          el.textContent = mins < 1 ? "due" : `${mins} min`;
+        }
+      } catch {
+        /* card simply shows no next time */
+      }
+    })
+  );
 }
 
 function bindStopCards(container) {
@@ -204,9 +261,36 @@ function bindStopCards(container) {
 
 /* ---------------- nearby ---------------- */
 
+function renderNearby() {
+  const list = $("nearby-list");
+  const f = state.filter;
+  const stops = state.nearbyStops.filter(
+    (s) =>
+      f === "all" ||
+      (f === "bus" ? s.modes.includes("bus") : s.modes.some((m) => m !== "bus"))
+  );
+  if (!stops.length) {
+    list.innerHTML = `<div class="hint"><p class="hint-led led">NO STOPS</p><p>No ${f === "all" ? "" : f === "bus" ? "bus " : "train/tube "}stops within 700 m.</p></div>`;
+    return;
+  }
+  list.innerHTML = stops.map((s) => stopCard(s)).join("");
+  bindStopCards(list);
+  fillNextDepartures(stops, list);
+}
+
+document.querySelectorAll("#nearby-chips .chip").forEach((chip) =>
+  chip.addEventListener("click", () => {
+    state.filter = chip.dataset.filter;
+    document
+      .querySelectorAll("#nearby-chips .chip")
+      .forEach((c) => c.classList.toggle("active", c === chip));
+    if (state.nearbyLoaded) renderNearby();
+  })
+);
+
 async function loadNearby() {
   const list = $("nearby-list");
-  list.innerHTML = `<div class="hint"><p class="hint-led led">LOCATING…</p><p>Finding stops around you.</p></div>`;
+  list.innerHTML = skeletons(5);
   if (!navigator.geolocation) {
     list.innerHTML = `<div class="error-note">Location isn’t available in this browser — use Search instead.</div>`;
     return;
@@ -231,12 +315,12 @@ async function loadNearby() {
             distance: s.distance,
           }));
         state.nearbyLoaded = true;
+        state.nearbyStops = stops;
         if (!stops.length) {
           list.innerHTML = `<div class="hint"><p class="hint-led led">NO STOPS FOUND</p><p>No stops within 700 m — are you in London?</p></div>`;
           return;
         }
-        list.innerHTML = stops.map((s) => stopCard(s)).join("");
-        bindStopCards(list);
+        renderNearby();
       } catch (e) {
         list.innerHTML = `<div class="error-note">Couldn’t reach TfL (${esc(e.message)}). Tap refresh to retry.</div>`;
       }
@@ -285,7 +369,7 @@ const POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i;
 async function runSearch(q) {
   const seq = ++searchSeq;
   const list = $("search-list");
-  list.innerHTML = `<div class="hint"><p class="hint-led led">SEARCHING…</p></div>`;
+  list.innerHTML = skeletons(4);
   try {
     const matches = POSTCODE_RE.test(q) ? await searchByPostcode(q) : await searchByName(q);
     if (seq !== searchSeq) return; // a newer search superseded this one
@@ -362,6 +446,7 @@ function renderFavs() {
     )
     .join("");
   bindStopCards(list);
+  fillNextDepartures(state.favs, list);
   list.querySelectorAll(".fav-remove").forEach((btn) =>
     btn.addEventListener("click", () => {
       state.favs = state.favs.filter((f) => f.id !== btn.dataset.id);
@@ -558,6 +643,7 @@ function abbrevLine(name = "") {
 
 const MAP_MIN_ZOOM_FOR_STOPS = 15;
 let map = null;
+var tileLayer = null; // var: theme code runs before this section and probes it via typeof
 const mapMarkers = new Map(); // naptanId → Leaflet marker
 let mapFetchTimer = null;
 let selectedPin = null;
@@ -585,11 +671,14 @@ function initMap() {
     return;
   }
   map = L.map("map", { zoomControl: false }).setView([51.5074, -0.1278], 16);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-    maxZoom: 19,
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  }).addTo(map);
+  tileLayer = L.tileLayer(
+    `https://{s}.basemaps.cartocdn.com/${resolvedTheme() === "light" ? "light_all" : "dark_all"}/{z}/{x}/{y}{r}.png`,
+    {
+      maxZoom: 19,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    }
+  ).addTo(map);
   map.on("moveend", scheduleMapFetch);
   map.on("click", hideStopSheet);
   navigator.geolocation?.getCurrentPosition(

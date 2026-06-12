@@ -32,7 +32,10 @@
       <span class="roundel" aria-hidden="true"><span class="roundel-bar"></span></span>
       <h1>NEXT<em>BUS</em></h1>
     </div>
-    <div class="clock led" id="clock" aria-label="Current time">--:--</div>
+    <div class="topbar-right">
+      <div class="clock led" id="clock" aria-label="Current time">--:--</div>
+      <button class="icon-btn" id="theme-toggle" aria-label="Theme: auto">◐</button>
+    </div>
   </header>
 
   <div class="status-strip" id="status-strip" aria-label="Line status">
@@ -52,6 +55,11 @@
       <div class="view-head">
         <h2>Nearby stops</h2>
         <button class="ghost-btn" id="nearby-refresh">↻ refresh</button>
+      </div>
+      <div class="chips" id="nearby-chips" role="group" aria-label="Filter by mode">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="bus">Bus</button>
+        <button class="chip" data-filter="rail">Train</button>
       </div>
       <div class="list" id="nearby-list">
         <div class="hint" id="nearby-hint">

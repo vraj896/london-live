@@ -38,6 +38,11 @@ just five static files).
 - **Live board** — arrivals sorted by time, auto-refreshing every 30 s, with
   TfL line colours, platform/stop letters, and blinking "due" for <1 min.
 - **Line status strip** — live Tube/DLR/Overground/Elizabeth/tram status, refreshed every 2 min.
+- **Light & dark themes** — toggle in the top bar cycles auto → light → dark (auto follows
+  the device). The arrivals board stays a dark LED panel in both, like a real countdown sign;
+  the map swaps between CARTO dark and light tiles.
+- **App-style UI** — line-colour edges on stop cards, next departure shown in the list,
+  All/Bus/Train filter chips, skeleton loading states, and an active-tab pill.
 
 ## Data
 
